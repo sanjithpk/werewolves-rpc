@@ -5,11 +5,11 @@ from threading import Timer, Lock, Thread
 import random
 
 USER_CREDENTIALS = {
-    'user1': 'password1',
-    'user2': 'password2',
-    'user3': 'password3',
-    'user4': 'password4',
-    'user5': 'password5'
+    'user1': 'pass1',
+    'user2': 'pass2',
+    'user3': 'pass3',
+    'user4': 'pass4',
+    'user5': 'pass5'
 }
 
 class MyService(rpyc.Service):
