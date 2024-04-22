@@ -1,7 +1,8 @@
 import rpyc
 from rpyc.utils.server import ThreadedServer
-import random
 import threading
+import random
+import time
 
 USER_CREDENTIALS = {
     'user1': 'pass1',
@@ -11,60 +12,77 @@ USER_CREDENTIALS = {
     'user5': 'pass5'
 }
 
-class WerewolfGameService(rpyc.Service):
+class MyService(rpyc.Service):
     def __init__(self):
-        self.active_users = []
+        self.active_users = {}
         self.connections = {}
-        self.game_started = False
-        self.player_roles = {}
         self.lock = threading.Lock()
-
+        self.game_started = False
+        self.roles = {}
+        self.start_time = None
+    
     def on_connect(self, conn):
         with self.lock:
-            self.connections[conn] = {
-                "username": None,
-                "authenticated": False
-            }
-        print(f"New connection: {conn}")
+            self.connections[conn] = {"username": None, "authenticated": False}
 
     def on_disconnect(self, conn):
         with self.lock:
-            user_data = self.connections.pop(conn, None)
-            if user_data and user_data["username"]:
-                self.active_users.remove(user_data["username"])
-                print(f"{user_data['username']} has disconnected")
+            user_info = self.connections.pop(conn, None)
+            if user_info and user_info["username"]:
+                self.active_users.pop(user_info["username"], None)
+                print(f"{user_info['username']} has disconnected")
 
-    def exposed_login(self, username, password):
-        if USER_CREDENTIALS.get(username) == password:
-            with self.lock:
-                if username not in self.active_users:
-                    for conn, user_data in self.connections.items():
-                        if user_data["username"] is None:
-                            user_data["username"] = username
-                            user_data["authenticated"] = True
-                            self.active_users.append(username)
-                            print(f"{username} has logged in")
-                            return True, "Logged in successfully"
-                else:
-                    return False, "User already logged in"
-        return False, "Invalid username or password"
-
-    def exposed_start_game(self):
+    def exposed_login(self, username, password, conn_id):
         with self.lock:
-            if self.game_started:
-                return False, "Game has already started."
-            if len(self.active_users) < 2:
-                return False, f"Not enough players to start the game. Need at least 2 players, but only {len(self.active_users)} are connected."
+            for conn, details in self.connections.items():
+                if details.get("conn_id", None) is None:  # Assign conn_id if not already assigned
+                    details["conn_id"] = conn_id
+                if details["conn_id"] == conn_id:
+                    if USER_CREDENTIALS.get(username) == password and username not in self.active_users:
+                        details["username"] = username
+                        details["authenticated"] = True
+                        self.active_users[username] = conn
+                        print(f"{username} is connected")
+                        if not self.start_time:
+                            self.start_countdown(60)  # Start countdown when first user logs in
+                        return True, "You are connected to the game, waiting for other players."
+                    return False, "Authentication failed or user already connected."
+            return False, "Invalid connection ID."
 
-            self.game_started = True
-            werewolves = random.sample(self.active_users, 2)
-            self.player_roles = {user: ("Werewolf" if user in werewolves else "Townsfolk") for user in self.active_users}
-            print(f"Game started with players: {self.active_users}")
-            return True, "Game started successfully!"
+    def start_countdown(self, duration):
+        self.start_time = time.time() + duration
+        threading.Timer(duration, self.check_start_game).start()
 
-    def exposed_get_role(self, username):
-        return self.player_roles.get(username, "No role assigned yet.")
+    def check_start_game(self):
+        with self.lock:
+            if time.time() >= self.start_time and len(self.active_users) >= 2 and not self.game_started:
+                self.start_game()
+            else:
+                print("Not enough players to start the game or already started")
+
+    def start_game(self):
+        self.game_started = True
+        self.assign_roles()
+        print("Game started. Roles have been assigned and night begins.")
+
+    def assign_roles(self):
+        players = list(self.active_users.keys())
+        random.shuffle(players)
+        num_werewolves = max(2, len(players) // 4)
+        werewolves = players[:num_werewolves]
+        witch = players[num_werewolves] if len(players) > num_werewolves else None
+        townspeople = players[num_werewolves + 1:]
+        self.roles = {player: "Werewolf" if player in werewolves else ("Witch" if player == witch else "Townspeople") for player in players}
+        for username in self.roles:
+            conn = self.active_users[username]
+            try:
+                conn.root.exposed_receive_role(self.roles[username])
+            except Exception as e:
+                print(f"Failed to notify {username} of their role: {str(e)}")
 
 if __name__ == "__main__":
-    t = ThreadedServer(WerewolfGameService, port=18812, protocol_config={"allow_public_attrs": True})
-    t.start()
+    port = 18812
+    server = ThreadedServer(MyService(), port=port)
+    print(f"Server starting on port {port}...")
+    server.start()
+
