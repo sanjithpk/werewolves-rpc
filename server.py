@@ -48,20 +48,6 @@ class MyService(rpyc.Service):
                 return "Authentication failed or user already connected."
         return "Invalid connection ID."
 
-    def send_countdown(self, start_time, countdown_time):
-        while time.time() - start_time < countdown_time and not self.game_started:
-            remaining = countdown_time - (time.time() - start_time)
-            message = f"Game starts in {int(remaining)} seconds"
-            with self.lock:
-                for conn in self.connections:
-                    if self.connections[conn]["authenticated"]:
-                        try:
-                            conn.root.receive_message(message)
-                        except Exception as e:
-                            print(f"Error sending message: {e}")
-            time.sleep(10)  # Update every 10 seconds
-        self.start_game()
-
     def start_game(self):
         print("called")
         with self.lock:
