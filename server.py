@@ -5,11 +5,11 @@ from threading import Timer, Lock, Thread
 import random
 
 USER_CREDENTIALS = {
-    'user1': 'password1',
-    'user2': 'password2',
-    'user3': 'password3',
-    'user4': 'password4',
-    'user5': 'password5'
+    'user1': 'pass',
+    'user2': 'pass',
+    'user3': 'pass',
+    'user4': 'pass',
+    'user5': 'pass'
 }
 
 class MyService(rpyc.Service):
@@ -17,6 +17,7 @@ class MyService(rpyc.Service):
     connections = {}
     lock = Lock()
     game_started = False
+    werewolves = []
 
     def on_connect(self, conn):
         # Initialize connection with placeholder data
@@ -66,22 +67,20 @@ class MyService(rpyc.Service):
         with self.lock:
             self.game_started = True
             if len(self.active_users) >= 2:
-                werewolves = random.sample(self.active_users, 2)
-            else:
-                werewolves = []
+                self.werewolves = random.sample(self.active_users, 2)
             for conn in self.connections:
                 print("triggered")
                 if self.connections[conn]["authenticated"]:
                     try:
                         conn.root.receive_message("Game has started")
-                        if self.connections[conn]["username"] in werewolves:
+                        if self.connections[conn]["username"] in self.werewolves:
                             conn.root.receive_message("You are the werewolves")
                     except Exception as e:
                         print(e)
 
 if __name__ == "__main__":
     service = MyService()
-    t = Thread(target=service.send_countdown, args=(time.time(), 60))  # 60 seconds countdown
+    t = Timer(60, service.start_game)
     t.start()
     server = ThreadedServer(service, port=18812, hostname='localhost')
     server.start()
