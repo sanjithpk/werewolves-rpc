@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package werewolves;
+
+// The Werewolves service definition.
+service WerewolvesService {
+  // Connects a user
+  rpc Connect (ConnectRequest) returns (ConnectResponse) {}
+  // Stream messages to clients
+  rpc InteractiveMessage (stream MessageRequest) returns (stream MessageResponse);
+  rpc StartGame (MessageRequest) returns (MessageResponse) {}
+}
+
+// The request message for connecting a user.
+message ConnectRequest {
+  string username = 1;
+  string password = 2;
+}
+
+// The response message for a connect attempt.
+message ConnectResponse {
+  string message = 1;
+}
+
+// The request message containing the message.
+message MessageRequest {
+  string message = 1;
+}
+
+// The response message containing the server response.
+message MessageResponse {
+  string message = 1;
+}
