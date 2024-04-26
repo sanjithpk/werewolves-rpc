@@ -19,7 +19,8 @@ class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
         self.game_start_time = self.server_start_time + timedelta(seconds=15)
         self.werewolves_vote_time = self.game_start_time + timedelta(seconds=15)
         self.townspeople_vote_time = self.werewolves_vote_time + timedelta(seconds=15)
-        self.vote = {}
+        self.werewolves_vote = {}
+        self.townspeople_vote = {}
 
     def Connect(self, request, context):
         username = request.username
@@ -61,7 +62,7 @@ class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
             return reply
         username = request.message
         if username in self.clients:
-            self.vote[username] = self.vote.get(username, 0) + 1
+            self.werewolves_vote[username] = self.werewolves_vote.get(username, 0) + 1
 
         def max_vote(vote):
             return max(vote, key=vote.get)
@@ -71,17 +72,14 @@ class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
             reply.message = "You cannot vote anymore"
             return reply
         time.sleep(wait_time)
-        print(self.vote)
-        if self.vote:
-            user_to_kill = max_vote(self.vote)
-        else: user_to_kill = "user1"
+        user_to_kill = max_vote(self.werewolves_vote)
         if user_to_kill in self.werewolves:
             self.werewolves.remove(user_to_kill)
         if user_to_kill in self.townspeople:
             self.townspeople.remove(user_to_kill)
+        if user_to_kill in self.clients:
+            del self.clients[user_to_kill]
         reply.message = f"{user_to_kill} has beeen killed"
-        with self.lock:
-            self.vote = {}
         return reply
     
     def TownsPeopleVote(self, request, context):
@@ -91,7 +89,7 @@ class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
             return reply
         username = request.message
         if username in self.clients:
-            self.vote[username] = self.vote.get(username, 0) + 1
+            self.townspeople_vote[username] = self.townspeople_vote.get(username, 0) + 1
 
         def max_vote(vote):
             return max(vote, key=vote.get)
@@ -102,15 +100,14 @@ class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
             reply.message = "You cannot vote anymore"
             return reply
         time.sleep(wait_time)
-        if self.vote:
-            user_to_kill = max_vote(self.vote)
-        else: user_to_kill = "user1"
+        user_to_kill = max_vote(self.townspeople_vote)
         if user_to_kill in self.werewolves:
             self.werewolves.remove(user_to_kill)
         if user_to_kill in self.townspeople:
             self.townspeople.remove(user_to_kill)
+        if user_to_kill in self.clients:
+            del self.clients[user_to_kill]
         reply.message = f"{user_to_kill} has beeen killed"
-        self.vote = {}
         return reply
         
 
