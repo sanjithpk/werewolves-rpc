@@ -9,6 +9,8 @@ service WerewolvesService {
   // Stream messages to clients
   rpc InteractiveMessage (stream MessageRequest) returns (stream MessageResponse);
   rpc StartGame (MessageRequest) returns (MessageResponse) {}
+  rpc WerewolvesVote (MessageRequest) returns (MessageResponse) {}
+  rpc TownsPeopleVote (MessageRequest) returns (MessageResponse) {}
 }
 
 // The request message for connecting a user.
@@ -24,7 +26,8 @@ message ConnectResponse {
 
 // The request message containing the message.
 message MessageRequest {
-  string message = 1;
+  string username = 1;
+  string message = 2;
 }
 
 // The response message containing the server response.

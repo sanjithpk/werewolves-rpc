@@ -30,6 +30,16 @@ class WerewolvesServiceStub(object):
                 request_serializer=werewolves__pb2.MessageRequest.SerializeToString,
                 response_deserializer=werewolves__pb2.MessageResponse.FromString,
                 )
+        self.WerewolvesVote = channel.unary_unary(
+                '/werewolves.WerewolvesService/WerewolvesVote',
+                request_serializer=werewolves__pb2.MessageRequest.SerializeToString,
+                response_deserializer=werewolves__pb2.MessageResponse.FromString,
+                )
+        self.TownsPeopleVote = channel.unary_unary(
+                '/werewolves.WerewolvesService/TownsPeopleVote',
+                request_serializer=werewolves__pb2.MessageRequest.SerializeToString,
+                response_deserializer=werewolves__pb2.MessageResponse.FromString,
+                )
 
 
 class WerewolvesServiceServicer(object):
@@ -56,6 +66,18 @@ class WerewolvesServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def WerewolvesVote(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def TownsPeopleVote(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_WerewolvesServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -71,6 +93,16 @@ def add_WerewolvesServiceServicer_to_server(servicer, server):
             ),
             'StartGame': grpc.unary_unary_rpc_method_handler(
                     servicer.StartGame,
+                    request_deserializer=werewolves__pb2.MessageRequest.FromString,
+                    response_serializer=werewolves__pb2.MessageResponse.SerializeToString,
+            ),
+            'WerewolvesVote': grpc.unary_unary_rpc_method_handler(
+                    servicer.WerewolvesVote,
+                    request_deserializer=werewolves__pb2.MessageRequest.FromString,
+                    response_serializer=werewolves__pb2.MessageResponse.SerializeToString,
+            ),
+            'TownsPeopleVote': grpc.unary_unary_rpc_method_handler(
+                    servicer.TownsPeopleVote,
                     request_deserializer=werewolves__pb2.MessageRequest.FromString,
                     response_serializer=werewolves__pb2.MessageResponse.SerializeToString,
             ),
@@ -131,6 +163,40 @@ class WerewolvesService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/werewolves.WerewolvesService/StartGame',
+            werewolves__pb2.MessageRequest.SerializeToString,
+            werewolves__pb2.MessageResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def WerewolvesVote(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/werewolves.WerewolvesService/WerewolvesVote',
+            werewolves__pb2.MessageRequest.SerializeToString,
+            werewolves__pb2.MessageResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def TownsPeopleVote(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/werewolves.WerewolvesService/TownsPeopleVote',
             werewolves__pb2.MessageRequest.SerializeToString,
             werewolves__pb2.MessageResponse.FromString,
             options, channel_credentials,

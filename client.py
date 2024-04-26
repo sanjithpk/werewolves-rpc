@@ -1,54 +1,33 @@
 import werewolves_pb2
 import werewolves_pb2_grpc
-import time
 import grpc
 import argparse
-
-def connect(server_address, username, password):
-    # Establish a connection to the server
-    channel = grpc.insecure_channel(server_address)
-    stub = werewolves_pb2_grpc.WerewolvesServiceStub(channel)
-    
-    # Send a connection request
-    connect_response = stub.Connect(werewolves_pb2.ConnectRequest(username=username, password=password))
-    print(f"Server response: {connect_response.message}")
-    return stub
-
-def get_client_stream_requests():
-    while True:
-        name = input("Please enter a name (or nothing to stop chatting): ")
-
-        if name == "":
-            break
-
-        hello_request = werewolves_pb2.MessageRequest(message = name)
-        yield hello_request
-        time.sleep(1)
-
-def run():
-    with grpc.insecure_channel('localhost:50051') as channel:
-        stub = werewolves_pb2_grpc.WerewolvesServiceStub(channel)
-        responses = stub.InteractiveMessage(get_client_stream_requests())
-
-        for response in responses:
-            print("InteractiveMessage Response Received: ")
-            print(response)
-
-        # responses = stub.InteractiveMessage(get_client_stream_requests())
-
-        # for response in responses:
-        #     print("InteractiveMessage Response Received: ")
-        #     print(response)
+import time
 
 def main(username, password):
     with grpc.insecure_channel('localhost:50051') as channel:
         stub = werewolves_pb2_grpc.WerewolvesServiceStub(channel)
         req = werewolves_pb2.ConnectRequest(username=username, password=password)
-        stub.Connect(req)
+        res = stub.Connect(req)
+        print(res)
 
-        req = werewolves_pb2.MessageRequest(message="Start")
+        req = werewolves_pb2.MessageRequest(username=username, message=username)
         res = stub.StartGame(req)
         print(res)
+
+        if res.message == "Game has started":
+            time.sleep(15)
+        else:
+            vote = input("Game has started, you are the werewolf, select a player to kill: ")
+            req = werewolves_pb2.MessageRequest(username=username, message=vote)
+            res = stub.WerewolvesVote(req)
+            print(res)
+
+        vote = input("Vote for a werewolf to kill: ")
+        req = werewolves_pb2.MessageRequest(username=username, message=vote) 
+        res = stub.TownsPeopleVote(req)
+        print(res)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Connect to Werewolves server")
