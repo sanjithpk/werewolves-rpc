@@ -11,10 +11,6 @@ python3 -m venv env
 
 ```
 
-```
-python3 -m venv env
-
-```
 
 To start the game, run server and multiple clients
 
@@ -29,3 +25,6 @@ To run client
 python client.py user1 pass1
 
 ```
+
+**Note**
+- Updated changes in **dev** branch
