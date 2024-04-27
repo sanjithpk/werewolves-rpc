@@ -40,6 +40,11 @@ class WerewolvesServiceStub(object):
                 request_serializer=werewolves__pb2.MessageRequest.SerializeToString,
                 response_deserializer=werewolves__pb2.MessageResponse.FromString,
                 )
+        self.EmptyVotes = channel.unary_unary(
+                '/werewolves.WerewolvesService/EmptyVotes',
+                request_serializer=werewolves__pb2.Empty.SerializeToString,
+                response_deserializer=werewolves__pb2.Empty.FromString,
+                )
 
 
 class WerewolvesServiceServicer(object):
@@ -78,6 +83,12 @@ class WerewolvesServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def EmptyVotes(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_WerewolvesServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -105,6 +116,11 @@ def add_WerewolvesServiceServicer_to_server(servicer, server):
                     servicer.TownsPeopleVote,
                     request_deserializer=werewolves__pb2.MessageRequest.FromString,
                     response_serializer=werewolves__pb2.MessageResponse.SerializeToString,
+            ),
+            'EmptyVotes': grpc.unary_unary_rpc_method_handler(
+                    servicer.EmptyVotes,
+                    request_deserializer=werewolves__pb2.Empty.FromString,
+                    response_serializer=werewolves__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -199,5 +215,22 @@ class WerewolvesService(object):
         return grpc.experimental.unary_unary(request, target, '/werewolves.WerewolvesService/TownsPeopleVote',
             werewolves__pb2.MessageRequest.SerializeToString,
             werewolves__pb2.MessageResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def EmptyVotes(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/werewolves.WerewolvesService/EmptyVotes',
+            werewolves__pb2.Empty.SerializeToString,
+            werewolves__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

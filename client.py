@@ -20,6 +20,8 @@ def main(username, password):
         
         def round(n, res, role):
             print(f"Round {n}")
+            req = werewolves_pb2.Empty()
+            stub.EmptyVotes(req)
             if res.message.startswith("Game has started,") or role == 1:
                 role = 1
                 vote = input("Game has started, you are the werewolf, select a player to kill: ")

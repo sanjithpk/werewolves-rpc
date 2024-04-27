@@ -35,6 +35,13 @@ class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
         else:
             return werewolves_pb2.ConnectResponse(message="Invalid credentials")
     
+    def EmptyVotes(self, request, context):
+        self.werewolves_vote = {}
+        self.townspeople_vote = {}
+        reply = werewolves_pb2.Empty()
+        return reply
+
+    
     def StartGame(self, request, context):
         time_now = datetime.now()
         wait_time = (self.game_start_time - time_now).total_seconds()

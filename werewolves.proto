@@ -11,6 +11,10 @@ service WerewolvesService {
   rpc StartGame (MessageRequest) returns (MessageResponse) {}
   rpc WerewolvesVote (MessageRequest) returns (MessageResponse) {}
   rpc TownsPeopleVote (MessageRequest) returns (MessageResponse) {}
+  rpc EmptyVotes (Empty) returns (Empty) {}
+}
+
+message Empty {
 }
 
 // The request message for connecting a user.
