@@ -10,13 +10,13 @@ import threading
 
 class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
     def __init__(self):
-        self.credentials = {'user1': 'pass1', 'user2': 'pass2', 'user3': 'pass3', 'user4': 'pass4', 'user5': 'pass5'}
+        self.credentials = {'user1': 'pass1', 'user2': 'pass2', 'user3': 'pass3', 'user4': 'pass4', 'user5': 'pass5', 'user6': 'pass6'}
         self.clients = {}
         self.werewolves = set()
         self.townspeople = set()
         self.lock = threading.Lock()
         self.server_start_time = datetime.now()
-        self.time = 15
+        self.time = 30
         self.game_start_time = self.server_start_time + timedelta(seconds=self.time)
         self.werewolves_vote = {}
         self.townspeople_vote = {}
