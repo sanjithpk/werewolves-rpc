@@ -33,4 +33,6 @@ message MessageRequest {
 // The response message containing the server response.
 message MessageResponse {
   string message = 1;
+  int32 werewolves = 2;
+  int32 townspeople = 3;
 }

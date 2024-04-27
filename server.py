@@ -22,6 +22,10 @@ class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
         self.werewolves_vote = {}
         self.townspeople_vote = {}
 
+    def UpdatePlayerCount(self, reply):
+        reply.werewolves = len(self.werewolves)
+        reply.townspeople = len(self.townspeople)
+
     def Connect(self, request, context):
         username = request.username
         password = request.password
@@ -41,6 +45,9 @@ class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
             return reply
         time.sleep(wait_time)
         with self.lock:
+            if len(self.clients) < 4:
+                reply.message = "Not enough players"
+                return reply
             if len(self.werewolves) == 0:
                 usernames = list(self.clients.keys())
                 werewolf_usernames = random.sample(usernames, 2)
@@ -50,9 +57,10 @@ class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
                     else:
                         self.townspeople.add(username)
         if request.message in self.werewolves:
-            reply.message = "You are the werewolves, now vote"
+            reply.message = "Game has started, you are the werewolves, now vote"
         else:
             reply.message = "Game has started"
+        self.UpdatePlayerCount(reply)
         return reply
     
     def WerewolvesVote(self, request, context):
@@ -60,9 +68,10 @@ class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
         if request.username not in self.clients:
             reply.message = "You are already dead"
             return reply
-        username = request.message
-        if username in self.clients:
-            self.werewolves_vote[username] = self.werewolves_vote.get(username, 0) + 1
+        if request.username in self.werewolves:
+            username = request.message
+            if username in self.clients:
+                self.werewolves_vote[username] = self.werewolves_vote.get(username, 0) + 1
 
         def max_vote(vote):
             return max(vote, key=vote.get)
@@ -80,6 +89,7 @@ class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
         if user_to_kill in self.clients:
             del self.clients[user_to_kill]
         reply.message = f"{user_to_kill} has beeen killed"
+        self.UpdatePlayerCount(reply)
         return reply
     
     def TownsPeopleVote(self, request, context):
@@ -108,6 +118,7 @@ class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
         if user_to_kill in self.clients:
             del self.clients[user_to_kill]
         reply.message = f"{user_to_kill} has beeen killed"
+        self.UpdatePlayerCount(reply)
         return reply
         
 
