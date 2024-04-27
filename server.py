@@ -16,7 +16,8 @@ class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
         self.townspeople = set()
         self.lock = threading.Lock()
         self.server_start_time = datetime.now()
-        self.game_start_time = self.server_start_time + timedelta(seconds=15)
+        self.time = 15
+        self.game_start_time = self.server_start_time + timedelta(seconds=self.time)
         self.werewolves_vote = {}
         self.townspeople_vote = {}
         self.round = 1
@@ -82,7 +83,7 @@ class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
         def max_vote(vote):
             return max(vote, key=vote.get)
         time_now = datetime.now()
-        wait_time = (self.game_start_time + timedelta(seconds=15 + 30 * (request.round - 1) ) - time_now).total_seconds()
+        wait_time = (self.game_start_time + timedelta(seconds=self.time + self.time * 2 * (request.round - 1) ) - time_now).total_seconds()
         if wait_time < 0:
             reply.message = "You cannot vote anymore"
             return reply
@@ -110,7 +111,7 @@ class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
         def max_vote(vote):
             return max(vote, key=vote.get)
         time_now = datetime.now()
-        wait_time = (self.game_start_time + timedelta(seconds=(30 * request.round)) - time_now).total_seconds()
+        wait_time = (self.game_start_time + timedelta(seconds=(self.time * 2 * request.round)) - time_now).total_seconds()
         
         if wait_time < 0:
             reply.message = "You cannot vote anymore"
