@@ -27,6 +27,6 @@ python client.py user1 pass1
 ```
 
 **Note**
-- Updated changes in **dev** branch
+- Updated changes are in **dev** branch
 - Github link: https://github.com/sanjithpk/werewolves-rpc/tree/dev
 - Video DEMO : https://youtu.be/wAynHZktPvk
