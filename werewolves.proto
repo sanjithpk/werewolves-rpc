@@ -28,6 +28,7 @@ message ConnectResponse {
 message MessageRequest {
   string username = 1;
   string message = 2;
+  int32 round = 3;
 }
 
 // The response message containing the server response.

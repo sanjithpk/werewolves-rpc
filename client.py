@@ -23,11 +23,11 @@ def main(username, password):
             if res.message.startswith("Game has started,") or role == 1:
                 role = 1
                 vote = input("Game has started, you are the werewolf, select a player to kill: ")
-                req = werewolves_pb2.MessageRequest(username=username, message=vote)
+                req = werewolves_pb2.MessageRequest(username=username, message=vote, round=n)
                 res = stub.WerewolvesVote(req)
                 print(res)
             elif res.message == "Game has started" or role == 2:
-                req = werewolves_pb2.MessageRequest(username=username, message=username) 
+                req = werewolves_pb2.MessageRequest(username=username, message=username, round=n) 
                 res = stub.WerewolvesVote(req)
                 print(res)
             else:
@@ -47,7 +47,7 @@ def main(username, password):
                 print("You are dead")
                 sys.exit()
             vote = input("Vote for a werewolf to kill: ")
-            req = werewolves_pb2.MessageRequest(username=username, message=vote) 
+            req = werewolves_pb2.MessageRequest(username=username, message=vote, round=n) 
             res = stub.TownsPeopleVote(req)
             print(res)
             
