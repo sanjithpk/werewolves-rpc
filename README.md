@@ -56,5 +56,5 @@ Ex: python client.py user1 pass1
 **Note**
 
 - Updated changes are in **master** branch
-- Github link: https://github.com/sanjithpk/werewolves-rpc/tree/dev
+- Github link: https://github.com/sanjithpk/werewolves-rpc
 - Video DEMO : https://youtu.be/wAynHZktPvk
