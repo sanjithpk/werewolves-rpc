@@ -1,3 +1,7 @@
+# Group 22, CSE 536 Final Project
+
+Sanjith Kalveerappanavar, Pawan Kondebai, Chandan Nooli
+
 To install
 
 ```
