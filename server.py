@@ -12,6 +12,7 @@ import werewolves_pb2_grpc as rpc
 class ChatServer(rpc.ChatServerServicer):  # inheriting here from the protobuf rpc file which is generated
 
     def __init__(self):
+        # Add more users as needed
         self.credentials = {'user1': 'pass1', 'user2': 'pass2', 'user3': 'pass3', 'user4': 'pass4', 'user5': 'pass5', 'user6': 'pass6'}
         self.chats = []
         self.werewolves_chats = []
@@ -130,7 +131,7 @@ class ChatServer(rpc.ChatServerServicer):  # inheriting here from the protobuf r
                 n = self.chats[lastindex]
                 if self.check_game_over(n.message):
                     yield n
-                    threading.Timer(5, self.close_server)
+                    threading.Timer(5, self.close_server).start()
                 lastindex += 1
                 yield n
             while len(self.werewolves_chats) > pastindex and request_iterator.name in self.werewolves:
