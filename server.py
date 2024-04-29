@@ -1,140 +1,181 @@
 from concurrent import futures
-import time
-import random
 
 import grpc
-import werewolves_pb2
-import werewolves_pb2_grpc
-from datetime import datetime, timedelta
+import time
 import threading
+import random
+import os
 
-class WerewolvesService(werewolves_pb2_grpc.WerewolvesService):
+import werewolves_pb2 as chat
+import werewolves_pb2_grpc as rpc
+
+class ChatServer(rpc.ChatServerServicer):  # inheriting here from the protobuf rpc file which is generated
+
     def __init__(self):
         self.credentials = {'user1': 'pass1', 'user2': 'pass2', 'user3': 'pass3', 'user4': 'pass4', 'user5': 'pass5', 'user6': 'pass6'}
+        self.chats = []
+        self.werewolves_chats = []
         self.clients = {}
         self.werewolves = set()
         self.townspeople = set()
-        self.lock = threading.Lock()
-        self.server_start_time = datetime.now()
-        self.time = 30
-        self.game_start_time = self.server_start_time + timedelta(seconds=self.time)
-        self.werewolves_vote = {}
-        self.townspeople_vote = {}
+        self.game_started = False
+        self.phase = 0
         self.round = 1
-
-    def UpdatePlayerCount(self, reply):
-        reply.werewolves = len(self.werewolves)
-        reply.townspeople = len(self.townspeople)
+        self.wait_time = 10
+        self.votes = {}
+        threading.Timer(self.wait_time, self.start_game).start()
 
     def Connect(self, request, context):
+        if self.game_started: return chat.Message(message="Game has already started!")
         username = request.username
         password = request.password
         if username in self.credentials and self.credentials[username] == password:
             self.clients[username] = context
             print(f"{username} connected")
-            return werewolves_pb2.ConnectResponse(message="Connected successfully")
+            return chat.Message(message="Connected successfully")
         else:
-            return werewolves_pb2.ConnectResponse(message="Invalid credentials")
-    
-    def EmptyVotes(self, request, context):
-        self.werewolves_vote = {}
-        self.townspeople_vote = {}
-        reply = werewolves_pb2.Empty()
-        return reply
-
-    
-    def StartGame(self, request, context):
-        time_now = datetime.now()
-        wait_time = (self.game_start_time - time_now).total_seconds()
-        reply = werewolves_pb2.MessageResponse()
-        if wait_time < 0:
-            reply.message = "Game has already started"
-            return reply
-        time.sleep(wait_time)
-        with self.lock:
-            if len(self.clients) < 4:
-                reply.message = "Not enough players"
-                return reply
-            if len(self.werewolves) == 0:
-                usernames = list(self.clients.keys())
-                werewolf_usernames = random.sample(usernames, 2)
-                for username in usernames:
-                    if username in werewolf_usernames:
-                        self.werewolves.add(username)
-                    else:
-                        self.townspeople.add(username)
-        if request.message in self.werewolves:
-            reply.message = "Game has started, you are the werewolves, now vote"
-        else:
-            reply.message = "Game has started"
-        self.UpdatePlayerCount(reply)
-        return reply
-    
-    def WerewolvesVote(self, request, context):
-        reply = werewolves_pb2.MessageResponse()
-        if request.username not in self.clients:
-            reply.message = "You are already dead"
-            return reply
-        if request.username in self.werewolves:
-            username = request.message
-            if username in self.clients:
-                self.werewolves_vote[username] = self.werewolves_vote.get(username, 0) + 1
-
-        def max_vote(vote):
-            return max(vote, key=vote.get)
-        time_now = datetime.now()
-        wait_time = (self.game_start_time + timedelta(seconds=self.time + self.time * 2 * (request.round - 1) ) - time_now).total_seconds()
-        if wait_time < 0:
-            reply.message = "You cannot vote anymore"
-            return reply
-        time.sleep(wait_time)
-        user_to_kill = max_vote(self.werewolves_vote)
-        if user_to_kill in self.werewolves:
-            self.werewolves.remove(user_to_kill)
-        if user_to_kill in self.townspeople:
-            self.townspeople.remove(user_to_kill)
-        if user_to_kill in self.clients:
-            del self.clients[user_to_kill]
-        reply.message = f"{user_to_kill} has beeen killed"
-        self.UpdatePlayerCount(reply)
-        return reply
-    
-    def TownsPeopleVote(self, request, context):
-        reply = werewolves_pb2.MessageResponse()
-        if request.username not in self.clients:
-            reply.message = "You are already dead"
-            return reply
-        username = request.message
-        if username in self.clients:
-            self.townspeople_vote[username] = self.townspeople_vote.get(username, 0) + 1
-
-        def max_vote(vote):
-            return max(vote, key=vote.get)
-        time_now = datetime.now()
-        wait_time = (self.game_start_time + timedelta(seconds=(self.time * 2 * request.round)) - time_now).total_seconds()
+            return chat.Message(message="Invalid credentials")
         
-        if wait_time < 0:
-            reply.message = "You cannot vote anymore"
-            return reply
-        time.sleep(wait_time)
-        user_to_kill = max_vote(self.townspeople_vote)
-        if user_to_kill in self.werewolves:
-            self.werewolves.remove(user_to_kill)
-        if user_to_kill in self.townspeople:
-            self.townspeople.remove(user_to_kill)
-        if user_to_kill in self.clients:
-            del self.clients[user_to_kill]
-        reply.message = f"{user_to_kill} has beeen killed"
-        self.UpdatePlayerCount(reply)
-        return reply
-        
+    def broadcast(self, message):
+        self.chats.append(chat.Message(message=message, name="Moderator"))
 
-def serve():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    werewolves_pb2_grpc.add_WerewolvesServiceServicer_to_server(WerewolvesService(), server)
-    server.add_insecure_port("localhost:50051")
+    def werewolves_broadcast(self, message):
+        self.werewolves_chats.append(chat.Message(message=message, name="Moderator"))
+
+    def start_game(self):
+        usernames = list(self.clients.keys())
+        werewolf_usernames = random.sample(usernames, 2)
+        for username in usernames:
+            if username in werewolf_usernames:
+                self.werewolves.add(username)
+            else:
+                self.townspeople.add(username)
+        self.game_started = True
+        self.werewolves_discussion()
+
+    def werewolves_discussion(self):
+        if self.round > 1:
+            user_to_kill = self.user_to_kill()
+            self.kill_user(user_to_kill)
+            self.votes = {}
+            self.broadcast(f"{user_to_kill} has been killed, discuss on which user to kill")
+            self.is_game_over()
+        self.broadcast(f"Round {self.round} has started")
+        self.werewolves_broadcast("Night has fallen, you are the werewolves now discuss")
+        self.phase = 1
+        threading.Timer(self.wait_time, self.werewolves_vote).start()
+    
+    def werewolves_vote(self):
+        self.werewolves_broadcast("Discussion Time up, now time to vote!")
+        self.phase = 2
+        threading.Timer(self.wait_time, self.townspeople_discussion).start()
+
+    def townspeople_discussion(self):
+        user_to_kill = self.user_to_kill()
+        self.kill_user(user_to_kill)
+        self.votes = {}
+        self.broadcast(f"{user_to_kill} has been killed, discuss on which user to kill")
+        self.is_game_over()
+        self.phase = 3
+        threading.Timer(self.wait_time, self.townspeople_vote).start()
+
+    def townspeople_vote(self):
+        self.broadcast("Discussion time up, time to vote!")
+        self.phase = 4
+        threading.Timer(self.wait_time, self.werewolves_discussion).start()
+        self.round += 1
+
+    def is_game_over(self):
+        if len(self.werewolves) == 0:
+            self.broadcast("Townspeople Win")
+        if len(self.townspeople) == 0:
+            self.broadcast("Werewolves Win")
+
+    def check_game_over(self, message):
+        results = ["Townspeople Win", "Werewolves Win"]
+        if message in results:
+            return True
+        return False
+    
+    def user_to_kill(self):
+        if len(self.votes) == 0: return "Nobody"
+        return max(self.votes, key=self.votes.get)
+    
+    def kill_user(self, user):
+        if user in self.clients:
+            del self.clients[user]
+        if user in self.werewolves:
+            self.werewolves.remove(user)
+        if user in self.townspeople:
+            self.townspeople.remove(user)
+
+    def close_server(self):
+        os._exit(1)
+
+    # The stream which will be used to send new messages to clients
+    def ChatStream(self, request_iterator, context):
+        """
+        This is a response-stream type call. This means the server can keep sending messages
+        Every client opens this connection and waits for server to send new messages
+
+        :param request_iterator:
+        :param context:
+        :return:
+        """
+        lastindex = 0
+        pastindex = 0
+        # For every client a infinite loop starts (in gRPC's own managed thread)
+        while True:
+            while len(self.chats) > lastindex:
+                n = self.chats[lastindex]
+                if self.check_game_over(n.message):
+                    yield n
+                    threading.Timer(5, self.close_server)
+                lastindex += 1
+                yield n
+            while len(self.werewolves_chats) > pastindex and request_iterator.name in self.werewolves:
+                n = self.werewolves_chats[pastindex]
+                pastindex += 1
+                yield n
+
+    def HandleMessage(self, request: chat.Message, context):
+        """
+        This method is called when a clients sends a Message to the server.
+
+        :param request:
+        :param context:
+        :return:
+        """
+        if request.name not in self.clients:
+           return chat.Empty()
+        if self.phase == 1:
+            print(f"[{request.name}] {request.message}")
+            if request.name in self.werewolves:
+                self.werewolves_chats.append(request)
+        if self.phase == 2:
+            if request.message in self.clients:
+                self.votes[request.message] = self.votes.get(request.message, 0) + 1
+        if self.phase == 3:
+            print(f"[{request.name}] {request.message}")
+            self.chats.append(request)
+        if self.phase == 4:
+            if request.message in self.clients:
+                self.votes[request.message] = self.votes.get(request.message, 0) + 1
+        return chat.Empty()  # something needs to be returned required by protobuf language, we just return empty msg
+
+
+if __name__ == '__main__':
+    port = 11912  # a random port for the server to run on
+    # the workers is like the amount of threads that can be opened at the same time, when there are 10 clients connected
+    # then no more clients able to connect to the server.
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))  # create a gRPC server
+    rpc.add_ChatServerServicer_to_server(ChatServer(), server)  # register the server to gRPC
+    # gRPC basically manages all the threading and server responding logic, which is perfect!
+    print('Starting server. Listening...')
+    server.add_insecure_port('[::]:' + str(port))
     server.start()
-    server.wait_for_termination()
-
-if __name__ == "__main__":
-    serve()
+    # Server starts in background (in another thread) so keep waiting
+    # if we don't wait here the main thread will end, which will end all the child threads, and thus the threads
+    # from the server won't continue to work and stop the server
+    while True:
+        time.sleep(64 * 64 * 100)

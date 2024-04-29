@@ -1,74 +1,61 @@
-import werewolves_pb2
-import werewolves_pb2_grpc
+import threading
 import grpc
 import argparse
-import time
-import sys
+import os
 
-def main(username, password):
-    with grpc.insecure_channel('localhost:50051') as channel:
-        stub = werewolves_pb2_grpc.WerewolvesServiceStub(channel)
-        req = werewolves_pb2.ConnectRequest(username=username, password=password)
-        res = stub.Connect(req)
-        print(res)
+import werewolves_pb2 as chat
+import werewolves_pb2_grpc as rpc
 
-        req = werewolves_pb2.MessageRequest(username=username, message=username)
-        res = stub.StartGame(req)
-        if res.message == "Game has already started":
+address = 'localhost'
+port = 11912
+
+
+class Client:
+
+    def __init__(self, u: str, p: str):
+        self.username = u
+        self.password = p
+        channel = grpc.insecure_channel(f'{address}:{port}')
+        self.conn = rpc.ChatServerStub(channel)
+        threading.Thread(target=self.__listen_for_messages, daemon=True).start()
+
+    def __listen_for_messages(self):
+        for note in self.conn.ChatStream(chat.Name(name=self.username)):
+            results = ["Townspeople Win", "Werewolves Win"]
+            print(f"[{note.name}] {note.message}")
+            if note.message in results: os._exit(1)
+            if note.message.split()[0] == self.username: os._exit(1)
+
+    def send_message(self, message):
+        if message:
+            n = chat.Message()
+            n.name = self.username
+            n.message = message
+            self.conn.HandleMessage(n)
+
+    def connect(self):
+        c = chat.Credentials()
+        c.username = self.username
+        c.password = self.password
+        res = self.conn.Connect(c)
+        return res.message
+
+    def run(self):
+        res = self.connect()
+        if not res == "Connected successfully":
             print(res)
             return
-        
-        def round(n, res, role):
-            print(f"Round {n}")
-            req = werewolves_pb2.Empty()
-            stub.EmptyVotes(req)
-            if res.message.startswith("Game has started,") or role == 1:
-                role = 1
-                vote = input("Game has started, you are the werewolf, select a player to kill: ")
-                req = werewolves_pb2.MessageRequest(username=username, message=vote, round=n)
-                res = stub.WerewolvesVote(req)
-                print(res)
-            elif res.message == "Game has started" or role == 2:
-                req = werewolves_pb2.MessageRequest(username=username, message=username, round=n) 
-                res = stub.WerewolvesVote(req)
-                print(res)
-            else:
-                print(res)
+        print("Client connected, game will start soon...")
+        try:
+            while True:
+                message = input()
+                if message.lower() == 'quit':
+                    print("Exiting chat...")
+                    break
+                self.send_message(message)
+        except KeyboardInterrupt:
+            print("Exited by user")
 
-            user_killed = res.message.split()[0]
-
-            if res.werewolves == 0:
-                print("Townspeople win!")
-                return
-            
-            if res.townspeople == 0:
-                print("Werewolves win!")
-                return 
-
-            if user_killed == username:
-                print("You are dead")
-                sys.exit()
-            vote = input("Vote for a werewolf to kill: ")
-            req = werewolves_pb2.MessageRequest(username=username, message=vote, round=n) 
-            res = stub.TownsPeopleVote(req)
-            print(res)
-            
-            user_killed = res.message.split()[0]
-
-            if res.werewolves == 0:
-                print("Townspeople win!")
-                return
-            
-            if res.townspeople == 0:
-                print("Werewolves win!")
-                return 
-
-            if user_killed == username or res.message == "You are already dead":
-                print("You are dead")
-                sys.exit()
-            round(n + 1, res, role)
-            
-        round(1, res, 2)
 
 
 if __name__ == '__main__':
@@ -76,5 +63,5 @@ if __name__ == '__main__':
     parser.add_argument('username', type=str, help="Username for connection")
     parser.add_argument('password', type=str, help="Password for connection")
     args = parser.parse_args()
-
-    main(args.username, args.password)
+    client = Client(args.username, args.password)
+    client.run()

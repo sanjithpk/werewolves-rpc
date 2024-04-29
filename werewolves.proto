@@ -1,43 +1,26 @@
 syntax = "proto3";
 
-package werewolves;
+package grpc;
 
-// The Werewolves service definition.
-service WerewolvesService {
-  // Connects a user
-  rpc Connect (ConnectRequest) returns (ConnectResponse) {}
-  // Stream messages to clients
-  rpc InteractiveMessage (stream MessageRequest) returns (stream MessageResponse);
-  rpc StartGame (MessageRequest) returns (MessageResponse) {}
-  rpc WerewolvesVote (MessageRequest) returns (MessageResponse) {}
-  rpc TownsPeopleVote (MessageRequest) returns (MessageResponse) {}
-  rpc EmptyVotes (Empty) returns (Empty) {}
+message Empty {}
+
+message Message {
+    string name = 1;
+    string message = 2;
 }
 
-message Empty {
+message Name {
+    string name = 1;
 }
 
-// The request message for connecting a user.
-message ConnectRequest {
-  string username = 1;
-  string password = 2;
+message Credentials {
+    string username = 1;
+    string password = 2;
 }
 
-// The response message for a connect attempt.
-message ConnectResponse {
-  string message = 1;
-}
-
-// The request message containing the message.
-message MessageRequest {
-  string username = 1;
-  string message = 2;
-  int32 round = 3;
-}
-
-// The response message containing the server response.
-message MessageResponse {
-  string message = 1;
-  int32 werewolves = 2;
-  int32 townspeople = 3;
+service ChatServer {
+    // This bi-directional stream makes it possible to send and receive Notes between 2 persons
+    rpc ChatStream (Name) returns (stream Message);
+    rpc HandleMessage (Message) returns (Empty);
+    rpc Connect (Credentials) returns (Message);
 }
