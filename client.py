@@ -20,11 +20,15 @@ class Client:
         threading.Thread(target=self.__listen_for_messages, daemon=True).start()
 
     def __listen_for_messages(self):
-        for note in self.conn.ChatStream(chat.Name(name=self.username)):
-            results = ["Townspeople Win", "Werewolves Win"]
-            print(f"[{note.name}] {note.message}")
-            if note.message in results: os._exit(1)
-            if note.message.split()[0] == self.username: os._exit(1)
+        try:
+            for note in self.conn.ChatStream(chat.Name(name=self.username)):
+                results = ["Townspeople Win", "Werewolves Win", "Not enough players"]
+                print(f"[{note.name}] {note.message}")
+                if note.message in results: os._exit(1)
+                if note.message.split()[0] == self.username: os._exit(1)
+        except:
+            print("Server is down")
+            os._exit(1)
 
     def send_message(self, message):
         if message:
@@ -41,20 +45,21 @@ class Client:
         return res.message
 
     def run(self):
-        res = self.connect()
-        if not res == "Connected successfully":
-            print(res)
-            return
-        print("Client connected, game will start soon...")
         try:
+            res = self.connect()
+            if not res == "Connected successfully":
+                print(res)
+                return
+            print("Client connected, game will start soon...")
             while True:
                 message = input()
                 if message.lower() == 'quit':
                     print("Exiting chat...")
                     break
                 self.send_message(message)
-        except KeyboardInterrupt:
-            print("Exited by user")
+        except Exception as e:
+            if e == KeyboardInterrupt:
+                print("Exited by user")
 
 
 

@@ -9,11 +9,13 @@ import os
 import werewolves_pb2 as chat
 import werewolves_pb2_grpc as rpc
 
-class ChatServer(rpc.ChatServerServicer):  # inheriting here from the protobuf rpc file which is generated
+class ChatServer(rpc.ChatServerServicer):
 
     def __init__(self):
         # Add more users as needed
         self.credentials = {'user1': 'pass1', 'user2': 'pass2', 'user3': 'pass3', 'user4': 'pass4', 'user5': 'pass5', 'user6': 'pass6'}
+        self.wait_time = 10
+        self.max_werewolves = 2
         self.chats = []
         self.werewolves_chats = []
         self.clients = {}
@@ -22,7 +24,6 @@ class ChatServer(rpc.ChatServerServicer):  # inheriting here from the protobuf r
         self.game_started = False
         self.phase = 0
         self.round = 1
-        self.wait_time = 10
         self.votes = {}
         threading.Timer(self.wait_time, self.start_game).start()
 
@@ -44,15 +45,19 @@ class ChatServer(rpc.ChatServerServicer):  # inheriting here from the protobuf r
         self.werewolves_chats.append(chat.Message(message=message, name="Moderator"))
 
     def start_game(self):
-        usernames = list(self.clients.keys())
-        werewolf_usernames = random.sample(usernames, 2)
-        for username in usernames:
-            if username in werewolf_usernames:
-                self.werewolves.add(username)
-            else:
-                self.townspeople.add(username)
-        self.game_started = True
-        self.werewolves_discussion()
+        if len(self.clients) < self.max_werewolves * 2:
+            self.broadcast("Not enough players")
+            self.wait(1, self.close_server)
+        else:
+            usernames = list(self.clients.keys())
+            werewolf_usernames = random.sample(usernames, self.max_werewolves)
+            for username in usernames:
+                if username in werewolf_usernames:
+                    self.werewolves.add(username)
+                else:
+                    self.townspeople.add(username)
+            self.game_started = True
+            self.werewolves_discussion()
 
     def werewolves_discussion(self):
         if self.round > 1:
@@ -62,14 +67,14 @@ class ChatServer(rpc.ChatServerServicer):  # inheriting here from the protobuf r
             self.broadcast(f"{user_to_kill} has been killed, discuss on which user to kill")
             self.is_game_over()
         self.broadcast(f"Round {self.round} has started")
-        self.werewolves_broadcast("Night has fallen, you are the werewolves now discuss")
+        self.werewolves_broadcast(f"Night has fallen, {", ".join(self.werewolves)} are the werewolves now discuss")
         self.phase = 1
-        threading.Timer(self.wait_time, self.werewolves_vote).start()
+        self.wait(self.wait_time, self.werewolves_vote)
     
     def werewolves_vote(self):
-        self.werewolves_broadcast("Discussion Time up, now time to vote!")
+        self.werewolves_broadcast("Werewolves discussion Time up, now time to vote!")
         self.phase = 2
-        threading.Timer(self.wait_time, self.townspeople_discussion).start()
+        self.wait(self.wait_time, self.townspeople_discussion)
 
     def townspeople_discussion(self):
         user_to_kill = self.user_to_kill()
@@ -78,12 +83,12 @@ class ChatServer(rpc.ChatServerServicer):  # inheriting here from the protobuf r
         self.broadcast(f"{user_to_kill} has been killed, discuss on which user to kill")
         self.is_game_over()
         self.phase = 3
-        threading.Timer(self.wait_time, self.townspeople_vote).start()
+        self.wait(self.wait_time, self.townspeople_vote)
 
     def townspeople_vote(self):
         self.broadcast("Discussion time up, time to vote!")
         self.phase = 4
-        threading.Timer(self.wait_time, self.werewolves_discussion).start()
+        self.wait(self.wait_time, self.werewolves_discussion)
         self.round += 1
 
     def is_game_over(self):
@@ -93,7 +98,7 @@ class ChatServer(rpc.ChatServerServicer):  # inheriting here from the protobuf r
             self.broadcast("Werewolves Win")
 
     def check_game_over(self, message):
-        results = ["Townspeople Win", "Werewolves Win"]
+        results = ["Townspeople Win", "Werewolves Win", "Not enough players"]
         if message in results:
             return True
         return False
@@ -113,7 +118,9 @@ class ChatServer(rpc.ChatServerServicer):  # inheriting here from the protobuf r
     def close_server(self):
         os._exit(1)
 
-    # The stream which will be used to send new messages to clients
+    def wait(self, t, f):
+        threading.Timer(t, f).start() 
+
     def ChatStream(self, request_iterator, context):
         """
         This is a response-stream type call. This means the server can keep sending messages
@@ -126,18 +133,22 @@ class ChatServer(rpc.ChatServerServicer):  # inheriting here from the protobuf r
         lastindex = 0
         pastindex = 0
         # For every client a infinite loop starts (in gRPC's own managed thread)
-        while True:
+        while context.is_active():
             while len(self.chats) > lastindex:
                 n = self.chats[lastindex]
                 if self.check_game_over(n.message):
                     yield n
-                    threading.Timer(5, self.close_server).start()
+                    self.wait(2, self.close_server)
                 lastindex += 1
                 yield n
             while len(self.werewolves_chats) > pastindex and request_iterator.name in self.werewolves:
                 n = self.werewolves_chats[pastindex]
                 pastindex += 1
                 yield n
+        else:
+            user = request_iterator.name
+            self.kill_user(user)
+            print(f"{user} disconnected")
 
     def HandleMessage(self, request: chat.Message, context):
         """
