@@ -28,6 +28,16 @@ class ChatServer(rpc.ChatServerServicer):
         threading.Timer(self.wait_time, self.start_game).start()
 
     def Connect(self, request, context):
+        """
+        Handles a connection request from a client. Verifies user credentials and adds the client to the list if the credentials are valid.
+        
+        Parameters:
+            request (Request): The request object containing username and password.
+            context (Context): The context of the gRPC call.
+            
+        Returns:
+            chat.Message: A message indicating either successful connection or failure (due to invalid credentials or game already started).
+        """
         if self.game_started: return chat.Message(message="Game has already started!")
         username = request.username
         password = request.password
@@ -119,16 +129,29 @@ class ChatServer(rpc.ChatServerServicer):
         os._exit(1)
 
     def wait(self, t, f):
+        """
+        Waits for a specified time period before executing a function.
+        
+        Parameters:
+            t (float): The time in seconds to wait.
+            f (function): The function to execute after the wait.
+        """
         threading.Timer(t, f).start() 
 
     def ChatStream(self, request_iterator, context):
         """
-        This is a response-stream type call. This means the server can keep sending messages
-        Every client opens this connection and waits for server to send new messages
+        Handles the continuous streaming of chat messages to clients. Distributes general and role-specific messages based on the game phase and user roles. Also handles client disconnections.
+        
+        Parameters:
+            request_iterator (Iterator): An iterator over incoming stream requests from a client, typically containing the client's username.
+            context (Context): The context of the gRPC call, used to check if the client connection is still active.
+            
+        Yields:
+            chat.Message: Messages from the game chat queues, either general or werewolf-specific, depending on the client's role and current game phase.
 
-        :param request_iterator:
-        :param context:
-        :return:
+        Notes:
+            - If a game-ending message is detected, the server will shut down after a delay.
+            - If the client disconnects, their user is removed from the game and a notification is printed.
         """
         lastindex = 0
         pastindex = 0
@@ -152,11 +175,18 @@ class ChatServer(rpc.ChatServerServicer):
 
     def HandleMessage(self, request: chat.Message, context):
         """
-        This method is called when a clients sends a Message to the server.
+        Receives and processes messages from clients based on the current game phase. Manages the storage of messages and updating of votes.
 
-        :param request:
-        :param context:
-        :return:
+        Parameters:
+            request (chat.Message): The message sent by a client, containing the sender's name and the message content.
+            context (Context): The context of the gRPC call.
+
+        Returns:
+            chat.Empty: An empty message indicating the receipt of the message.
+
+        Notes:
+            - If the client is not recognized (not in the list of active clients), no further action is taken.
+            - Depending on the game phase (stored in self.phase), messages are routed to different handling mechanisms.
         """
         if request.name not in self.clients:
            return chat.Empty()
@@ -173,7 +203,7 @@ class ChatServer(rpc.ChatServerServicer):
         if self.phase == 4:
             if request.message in self.clients:
                 self.votes[request.message] = self.votes.get(request.message, 0) + 1
-        return chat.Empty()  # something needs to be returned required by protobuf language, we just return empty msg
+        return chat.Empty()
 
 
 if __name__ == '__main__':
