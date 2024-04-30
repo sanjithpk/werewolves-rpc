@@ -77,7 +77,7 @@ class ChatServer(rpc.ChatServerServicer):
             self.broadcast(f"{user_to_kill} has been killed, discuss on which user to kill")
             self.is_game_over()
         self.broadcast(f"Round {self.round} has started")
-        self.werewolves_broadcast(f"Night has fallen, {", ".join(self.werewolves)} are the werewolves now discuss")
+        self.werewolves_broadcast(f"Night has fallen, {','.join(self.werewolves)} are the werewolves now discuss")
         self.phase = 1
         self.wait(self.wait_time, self.werewolves_vote)
     
