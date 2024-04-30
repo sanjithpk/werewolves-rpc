@@ -14,7 +14,7 @@ class ChatServer(rpc.ChatServerServicer):
     def __init__(self):
         # Add more users as needed
         self.credentials = {'user1': 'pass1', 'user2': 'pass2', 'user3': 'pass3', 'user4': 'pass4', 'user5': 'pass5', 'user6': 'pass6'}
-        self.wait_time = 10
+        self.wait_time = 45
         self.max_werewolves = 2
         self.chats = []
         self.werewolves_chats = []
