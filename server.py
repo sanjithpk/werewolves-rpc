@@ -77,11 +77,13 @@ class ChatServer(rpc.ChatServerServicer):
             self.broadcast(f"{user_to_kill} has been killed, discuss on which user to kill")
             self.is_game_over()
         self.broadcast(f"Round {self.round} has started")
+        self.broadcast("-----------------------NIGHT-------------------------------")
         self.werewolves_broadcast(f"Night has fallen, {','.join(self.werewolves)} are the werewolves now discuss")
         self.phase = 1
         self.wait(self.wait_time, self.werewolves_vote)
     
     def werewolves_vote(self):
+        self.werewolves_broadcast("----------------------WEREWOLVES VOTE---------------------")
         self.werewolves_broadcast("Werewolves discussion Time up, now time to vote!")
         self.phase = 2
         self.wait(self.wait_time, self.townspeople_discussion)
@@ -90,12 +92,14 @@ class ChatServer(rpc.ChatServerServicer):
         user_to_kill = self.user_to_kill()
         self.kill_user(user_to_kill)
         self.votes = {}
+        self.broadcast("-------------------------DAY-------------------------------")
         self.broadcast(f"{user_to_kill} has been killed, discuss on which user to kill")
         self.is_game_over()
         self.phase = 3
         self.wait(self.wait_time, self.townspeople_vote)
 
     def townspeople_vote(self):
+        self.broadcast("---------------------TOWNSPEOPLE VOTE---------------------")
         self.broadcast("Discussion time up, time to vote!")
         self.phase = 4
         self.wait(self.wait_time, self.werewolves_discussion)

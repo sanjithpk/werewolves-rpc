@@ -22,10 +22,13 @@ class Client:
     def __listen_for_messages(self):
         try:
             for note in self.conn.ChatStream(chat.Name(name=self.username)):
+                if note.message.startswith(f"{self.username} has been killed"):
+                    print("You are dead")
+                    os._exit(1)
                 results = ["Townspeople Win", "Werewolves Win", "Not enough players"]
                 print(f"[{note.name}] {note.message}")
                 if note.message in results: os._exit(1)
-                if note.message.split()[0] == self.username: os._exit(1)
+                
         except:
             print("Server is down")
             os._exit(1)
