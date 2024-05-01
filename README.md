@@ -2,7 +2,7 @@
 
 Sanjith Kalveerappanavar, Pawan Kondebai, Chandan Nooli
 
-To install
+To install, Python >= 3.7
 
 ```
 python3 -m venv env
@@ -10,10 +10,10 @@ source env/bin/activate
 pip install -r requirements.txt
 ```
 
-To compile protobuff
+To compile protobuff (Optional)
 
 ```
-python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. werewolf.proto
+python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. werewolves.proto
 ```
 
 To start the game, run server and multiple clients
@@ -68,7 +68,6 @@ Ex: python client.py user1 pass1
 9. Finally Werewolves win in this game 🐺
 
 ![Connection](https://github.com/sanjithpk/werewolves-rpc/blob/master/screenshots/9_final.png)
-
 
 **Note**
 
